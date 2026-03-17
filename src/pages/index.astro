@@ -1,0 +1,195 @@
+---
+import Layout from "../layouts/Layout.astro";
+import BrazilMap from "../components/BrazilMap";
+import CandidateRanking from "../components/CandidateRanking";
+import BuzzThermometer from "../components/BuzzThermometer";
+import {
+  getPresidenteRanking,
+  getBuzzRanking,
+  getStateSummaries,
+  getLastCollectionTime,
+} from "../lib/data";
+
+const [presidente, buzz, states, lastUpdate] = await Promise.all([
+  getPresidenteRanking(),
+  getBuzzRanking("presidente"),
+  getStateSummaries(),
+  getLastCollectionTime(),
+]);
+
+const formattedUpdate = lastUpdate
+  ? new Date(lastUpdate).toLocaleString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+  : "—";
+---
+
+<Layout title="Painel Eleitoral">
+  <!-- Hero -->
+  <section class="hero">
+    <h1>Eleições <span class="accent">2026</span></h1>
+    <p class="hero-sub">
+      Pesquisas eleitorais + termômetro social em tempo real.
+      <span class="mono">Atualizado: {formattedUpdate}</span>
+    </p>
+  </section>
+
+  <!-- Map section -->
+  <section class="section" id="mapa">
+    <h2 class="section-title">Mapa do Brasil</h2>
+    <div class="card">
+      <BrazilMap client:load states={states} mode="pesquisas" />
+    </div>
+  </section>
+
+  <!-- Presidente section -->
+  <section class="section" id="presidente">
+    <div class="grid-2">
+      <div class="card">
+        <CandidateRanking
+          client:load
+          candidates={presidente}
+          title="Presidente — Média Ponderada"
+          showAvgType="ponderada"
+        />
+      </div>
+      <div class="card">
+        <CandidateRanking
+          client:load
+          candidates={presidente}
+          title="Presidente — Média Simples"
+          showAvgType="simples"
+        />
+      </div>
+    </div>
+  </section>
+
+  <!-- Buzz section -->
+  <section class="section" id="buzz">
+    <h2 class="section-title">Termômetro Social — Presidente</h2>
+    <p class="section-desc">
+      Índice composto: Google Trends (30%) + Google News (30%) + Bluesky (20%) + YouTube (20%).
+      Sentimento via análise lexical em PT-BR.
+    </p>
+    <BuzzThermometer client:load candidates={buzz} />
+  </section>
+
+  <!-- Methodology -->
+  <section class="section" id="metodologia">
+    <div class="card methodology">
+      <h2 class="section-title">Metodologia</h2>
+      <div class="method-grid">
+        <div>
+          <h3>Pesquisas</h3>
+          <p>
+            Agregamos pesquisas registradas no TSE de todos os institutos.
+            A média ponderada considera: qualidade do instituto (histórico de acerto),
+            tamanho da amostra, e recência (decay exponencial, meia-vida de 15 dias).
+          </p>
+        </div>
+        <div>
+          <h3>Termômetro social</h3>
+          <p>
+            Quatro fontes gratuitas compõem o índice: Google Trends (volume de buscas por estado),
+            Bluesky (posts públicos via AT Protocol), Google News RSS (manchetes),
+            e YouTube Data API (vídeos + engagement). Sentimento via OpLexicon (léxico PT-BR).
+          </p>
+        </div>
+        <div>
+          <h3>Atualização</h3>
+          <p>
+            Dados coletados automaticamente a cada 6 horas via GitHub Actions.
+            O site é reconstruído no Vercel após cada coleta.
+            Código aberto — sem vínculo partidário ou financeiro.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+</Layout>
+
+<style>
+  .hero {
+    padding: 2rem 0 1rem;
+  }
+
+  .hero h1 {
+    font-size: 2.5rem;
+    font-weight: 300;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+  }
+
+  .accent {
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .hero-sub {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    margin-top: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .hero-sub .mono {
+    font-size: 0.7rem;
+    color: var(--text-tertiary);
+    padding: 0.2rem 0.5rem;
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+  }
+
+  .section {
+    margin-top: 3rem;
+  }
+
+  .section-desc {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 1.5rem;
+    max-width: 700px;
+    line-height: 1.6;
+  }
+
+  .methodology {
+    padding: 2rem;
+  }
+
+  .method-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+    margin-top: 1rem;
+  }
+
+  .method-grid h3 {
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+  }
+
+  .method-grid p {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
+
+  @media (max-width: 768px) {
+    .hero h1 {
+      font-size: 1.8rem;
+    }
+
+    .method-grid {
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+  }
+</style>

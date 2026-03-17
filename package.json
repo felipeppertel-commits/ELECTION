@@ -1,0 +1,41 @@
+{
+  "name": "eleicoes-2026",
+  "type": "module",
+  "version": "1.0.0",
+  "description": "Painel de eleições brasileiras 2026 — pesquisas + termômetro social",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "fetch:trends": "tsx scripts/fetch-trends.ts",
+    "fetch:bluesky": "tsx scripts/fetch-bluesky.ts",
+    "fetch:news": "tsx scripts/fetch-news.ts",
+    "fetch:youtube": "tsx scripts/fetch-youtube.ts",
+    "fetch:polls": "tsx scripts/fetch-polls.ts",
+    "compute:averages": "tsx scripts/compute-averages.ts",
+    "collect:all": "npm run fetch:trends && npm run fetch:bluesky && npm run fetch:news && npm run fetch:polls && npm run compute:averages",
+    "seed:candidates": "tsx scripts/seed-candidates.ts"
+  },
+  "dependencies": {
+    "@astrojs/preact": "^4.0.0",
+    "@astrojs/vercel": "^8.0.0",
+    "@supabase/supabase-js": "^2.45.0",
+    "astro": "^5.0.0",
+    "d3-geo": "^3.1.1",
+    "d3-scale": "^4.0.2",
+    "preact": "^10.24.0",
+    "recharts": "^2.13.0",
+    "topojson-client": "^3.1.0"
+  },
+  "devDependencies": {
+    "@types/d3-geo": "^3.1.0",
+    "@types/d3-scale": "^4.0.8",
+    "@types/topojson-client": "^3.1.4",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "dotenv": "^16.4.0",
+    "google-trends-api": "^4.9.2",
+    "cheerio": "^1.0.0",
+    "fast-xml-parser": "^4.5.0"
+  }
+}
