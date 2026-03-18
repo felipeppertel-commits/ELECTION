@@ -31,6 +31,10 @@ const CANDIDATES = [
   { nome: "Guilherme Boulos", nome_urna: "Boulos", cargo: "presidente", uf: null, partido: "PSOL", cor_partido: "#FFCC00" },
   { nome: "Helder Barbalho", nome_urna: "Helder Barbalho", cargo: "presidente", uf: null, partido: "MDB", cor_partido: "#FFD700" },
 
+  // Aparecem em pesquisas mais recentes
+  { nome: "Aldo Rebelo", nome_urna: "Aldo Rebelo", cargo: "presidente", uf: null, partido: "MDB", cor_partido: "#FFD700" },
+  { nome: "Renan Santos", nome_urna: "Renan Santos", cargo: "presidente", uf: null, partido: "NOVO", cor_partido: "#FF6600" },
+
   // Jair Bolsonaro — INELEGÍVEL até 2030, mas aparece em pesquisas
   { nome: "Jair Messias Bolsonaro", nome_urna: "Jair Bolsonaro", cargo: "presidente", uf: null, partido: "PL", cor_partido: "#003DA5" },
 

@@ -28,29 +28,61 @@ jobs:
 
       - run: npm ci
 
-      # Run collectors in parallel where possible
+      # Pesquisas eleitorais (fonte primária)
+      - name: Fetch Polls (metadata + aggregates)
+        id: polls
+        run: npm run fetch:polls
+        continue-on-error: true
+
+      - name: Fetch Polls Detail (percentuais por candidato)
+        id: polls_detail
+        run: npm run fetch:polls-detail
+        continue-on-error: true
+
+      # Social buzz collectors
       - name: Fetch Google Trends
+        id: trends
         run: npm run fetch:trends
         continue-on-error: true
 
       - name: Fetch Bluesky
+        id: bluesky
         run: npm run fetch:bluesky
         continue-on-error: true
 
       - name: Fetch Google News
+        id: news
         run: npm run fetch:news
         continue-on-error: true
 
-      - name: Fetch Polls
-        run: npm run fetch:polls
+      # Aggregation (roda depois de todos os coletores)
+      - name: Compute Averages & Buzz Index
+        id: averages
+        run: npm run compute:averages
         continue-on-error: true
 
-      # Aggregation must run after all collectors
-      - name: Compute Averages & Buzz Index
-        run: npm run compute:averages
-
-      # Notify on failure
-      - name: Report Status
-        if: failure()
+      # Trigger Vercel rebuild
+      - name: Trigger Vercel Deploy
+        if: env.VERCEL_DEPLOY_HOOK != ''
         run: |
-          echo "::warning::One or more collectors failed. Check logs."
+          curl -s -X POST "$VERCEL_DEPLOY_HOOK" || echo "⚠ Vercel deploy hook failed"
+
+      # Report — cria issue se falhar 3x seguidas
+      - name: Check Results
+        if: always()
+        run: |
+          FAILED=0
+          [ "${{ steps.polls.outcome }}" = "failure" ] && FAILED=$((FAILED+1)) && echo "⚠ fetch:polls falhou"
+          [ "${{ steps.polls_detail.outcome }}" = "failure" ] && FAILED=$((FAILED+1)) && echo "⚠ fetch:polls-detail falhou"
+          [ "${{ steps.trends.outcome }}" = "failure" ] && FAILED=$((FAILED+1)) && echo "⚠ fetch:trends falhou"
+          [ "${{ steps.bluesky.outcome }}" = "failure" ] && FAILED=$((FAILED+1)) && echo "⚠ fetch:bluesky falhou"
+          [ "${{ steps.news.outcome }}" = "failure" ] && FAILED=$((FAILED+1)) && echo "⚠ fetch:news falhou"
+          [ "${{ steps.averages.outcome }}" = "failure" ] && FAILED=$((FAILED+1)) && echo "⚠ compute:averages falhou"
+
+          if [ $FAILED -ge 3 ]; then
+            echo "::error::$FAILED de 6 coletores falharam. Verificar logs."
+          elif [ $FAILED -gt 0 ]; then
+            echo "::warning::$FAILED coletor(es) com falha parcial."
+          else
+            echo "✓ Todos os coletores executaram com sucesso."
+          fi

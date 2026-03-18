@@ -12,9 +12,11 @@
     "fetch:news": "tsx scripts/fetch-news.ts",
     "fetch:youtube": "tsx scripts/fetch-youtube.ts",
     "fetch:polls": "tsx scripts/fetch-polls.ts",
+    "fetch:polls-detail": "tsx scripts/fetch-polls-detail.ts",
     "compute:averages": "tsx scripts/compute-averages.ts",
-    "collect:all": "npm run fetch:trends && npm run fetch:bluesky && npm run fetch:news && npm run fetch:polls && npm run compute:averages",
-    "seed:candidates": "tsx scripts/seed-candidates.ts"
+    "collect:all": "npm run fetch:polls && npm run fetch:polls-detail && npm run fetch:trends && npm run fetch:bluesky && npm run fetch:news && npm run compute:averages",
+    "seed:candidates": "tsx scripts/seed-candidates.ts",
+    "generate:map": "tsx scripts/generate-map-paths.ts"
   },
   "dependencies": {
     "@astrojs/preact": "^4.0.0",
