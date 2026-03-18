@@ -379,7 +379,6 @@ async function main() {
   console.log(`  ${candidates.length} candidatos ativos\n`);
 
   let totalUpserted = 0;
-  let totalAggregates = 0;
 
   // ══════════════════════════════════════════════════════════
   // ETAPA 1: Buscar todas as pesquisas (metadados)
@@ -387,121 +386,8 @@ async function main() {
   const polls = await fetchAllPolls();
 
   // ══════════════════════════════════════════════════════════
-  // ETAPA 2: Buscar aggregates (estimativas modelo Bayesiano)
-  // ══════════════════════════════════════════════════════════
-  console.log("\n  [2/4] Buscando estimativas agregadas (modelo Bayesiano)...");
-
-  // Descobrir cenários disponíveis checando as questions
-  const scenariosSet = new Set<string>();
-  const questionTypesSet = new Set<string>();
-
-  // Amostra de polls para descobrir cenários
-  const samplePolls = polls.slice(0, Math.min(10, polls.length));
-  for (const poll of samplePolls) {
-    const questions = await fetchPollQuestions(poll.id);
-    for (const q of questions) {
-      questionTypesSet.add(q.question_type);
-      if (q.scenario_code) scenariosSet.add(q.scenario_code);
-    }
-  }
-
-  const scenarios = scenariosSet.size > 0 ? [...scenariosSet] : ["cenario_01"];
-  const questionTypes = questionTypesSet.size > 0
-    ? [...questionTypesSet].filter((t) => t === "estimulada" || t === "espontanea")
-    : ["estimulada"];
-
-  console.log(`    Cenários encontrados: ${scenarios.join(", ")}`);
-  console.log(`    Tipos de questão: ${[...questionTypesSet].join(", ")}`);
-
-  // Buscar aggregates nacionais para cada cenário
-  for (const scenario of scenarios) {
-    for (const qType of questionTypes) {
-      const agg = await fetchAggregates({
-        election_id: 1,
-        question_type: qType,
-        round: 1,
-        scenario_code: scenario,
-        geography_level: "nacional",
-      });
-
-      if (!agg || !agg.estimates || agg.estimates.length === 0) continue;
-
-      console.log(`\n    ✓ Agregado nacional ${qType}/${scenario}: ${agg.estimates.length} candidatos (${agg.poll_count} pesquisas)`);
-
-      for (const est of agg.estimates) {
-        const cid = matchCandidate(est.candidate_name, candidates);
-        if (!cid) {
-          console.log(`      ⚠ Não encontrado: "${est.candidate_name}"`);
-          continue;
-        }
-
-        // Upsert na poll_averages (média ponderada do modelo)
-        const { error } = await supabase.from("poll_averages").upsert(
-          {
-            candidate_id: cid,
-            data: agg.as_of,
-            media_simples: est.estimate,
-            media_ponderada: est.estimate,
-            num_pesquisas: agg.poll_count,
-            cargo: "presidente",
-            uf: null,
-          },
-          { onConflict: "candidate_id,data" }
-        );
-
-        if (error) {
-          console.log(`      ✗ Upsert avg erro: ${error.message}`);
-        } else {
-          totalAggregates++;
-        }
-      }
-
-      // Candidatos no "special" (baixa intenção, misturados com Branco/Nulo)
-      if (agg.special) {
-        for (const [name, pct] of Object.entries(agg.special)) {
-          const skip = /branco|nulo|ns\/?nr|indecis|não sabe|nenhum|outros/i;
-          if (skip.test(name)) continue;
-          const cid = matchCandidate(name, candidates);
-          if (!cid) continue;
-
-          await supabase.from("poll_averages").upsert(
-            {
-              candidate_id: cid,
-              data: agg.as_of,
-              media_simples: pct,
-              media_ponderada: pct,
-              num_pesquisas: agg.poll_count,
-              cargo: "presidente",
-              uf: null,
-            },
-            { onConflict: "candidate_id,data" }
-          );
-          totalAggregates++;
-        }
-      }
-    }
-  }
-
-  // Buscar aggregates segundo turno
-  for (const scenario of scenarios) {
-    const agg2 = await fetchAggregates({
-      election_id: 1,
-      question_type: "estimulada",
-      round: 2,
-      scenario_code: scenario,
-    });
-
-    if (agg2?.estimates && agg2.estimates.length > 0) {
-      console.log(`\n    ✓ Agregado 2º turno ${scenario}: ${agg2.estimates.length} candidatos`);
-      // Salvar como registro separado (turno 2) — por agora só log
-      for (const est of agg2.estimates) {
-        console.log(`      ${est.candidate_name}: ${est.estimate.toFixed(1)}% (win: ${(est.win_prob * 100).toFixed(1)}%)`);
-      }
-    }
-  }
-
-  // ══════════════════════════════════════════════════════════
-  // ETAPA 3: Gravar metadados das pesquisas individuais + tentar detail pages
+  // ETAPA 2: Gravar metadados das pesquisas individuais + tentar detail pages
+  // NB: Médias são calculadas por compute-averages.ts a partir dos polls brutos
   // ══════════════════════════════════════════════════════════
   console.log("\n  [3/4] Processando pesquisas individuais...");
 
@@ -575,20 +461,20 @@ async function main() {
   console.log(`\n═══ Resultado ═══`);
   console.log(`  Pesquisas encontradas: ${polls.length}`);
   console.log(`  Registros polls upserted: ${totalUpserted}`);
-  console.log(`  Registros poll_averages: ${totalAggregates}`);
+  console.log(`  Registros poll_averages: ${0 /* aggregates removido */}`);
   console.log(`  TSE registros: ${tseRecords.length}`);
   console.log(`  Duração: ${(duration / 1000).toFixed(1)}s\n`);
 
   // Log de coleta
   await supabase.from("collection_log").insert({
     source: "polls_e2d",
-    status: totalUpserted > 0 || totalAggregates > 0 ? "success" : "partial",
-    records_inserted: totalUpserted + totalAggregates,
+    status: totalUpserted > 0 || 0 /* aggregates removido */ > 0 ? "success" : "partial",
+    records_inserted: totalUpserted + 0 /* aggregates removido */,
     duration_ms: duration,
     metadata: {
       polls_found: polls.length,
       polls_upserted: totalUpserted,
-      averages_upserted: totalAggregates,
+      averages_upserted: 0 /* aggregates removido */,
       scenarios: scenarios,
       tse_records: tseRecords.length,
     },
